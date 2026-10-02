@@ -11,7 +11,7 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "@apidevtools/swagger-parser": "12.1.0",
+    "@apidevtools/swagger-parser": "13.1.0",
     "prettier": "3.9.9"
   }
 }
