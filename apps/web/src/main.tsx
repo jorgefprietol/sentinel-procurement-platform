@@ -124,6 +124,13 @@ function App() {
     setShowCreate(false);
     setNotice("");
   }
+  function chooseEngine(next: Engine) {
+    if (next === engine) return;
+    clearSession();
+    setError("");
+    setLoading(true);
+    setEngine(next);
+  }
   function fail(e: unknown) {
     if (e instanceof ApiFailure) {
       setError(messages[e.code] || "No se pudo completar la operación.");
@@ -372,14 +379,14 @@ function App() {
               <button
                 disabled={busy || loading}
                 aria-pressed={engine === "dotnet"}
-                onClick={() => setEngine("dotnet")}
+                onClick={() => chooseEngine("dotnet")}
               >
                 .NET
               </button>
               <button
                 disabled={busy || loading}
                 aria-pressed={engine === "java"}
-                onClick={() => setEngine("java")}
+                onClick={() => chooseEngine("java")}
               >
                 Java
               </button>
