@@ -30,5 +30,6 @@ CREATE TABLE rate_buckets (
 );
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO sentinel_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sentinel_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, sessions, purchases, rate_buckets TO sentinel_app;
+GRANT SELECT, INSERT ON audit TO sentinel_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sentinel_app;

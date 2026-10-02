@@ -1,9 +1,9 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /src
 COPY services/java/pom.xml .
-RUN mvn -B dependency:go-offline
+RUN --mount=type=cache,id=sentinel-maven,target=/root/.m2,sharing=locked mvn -B -Djava.net.preferIPv4Stack=true dependency:go-offline
 COPY services/java/src src
-RUN mvn -B verify
+RUN --mount=type=cache,id=sentinel-maven,target=/root/.m2,sharing=locked mvn -B -Djava.net.preferIPv4Stack=true verify
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S sentinel && adduser -S -G sentinel sentinel
 WORKDIR /app

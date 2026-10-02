@@ -116,6 +116,24 @@ for (const engine of ["dotnet", "java"]) {
         ).status,
         404,
       );
+      // Identical operation keys must be independent across owners and tenants.
+      for (const cookie of [bob, carol]) {
+        const own = await call("/purchases", {
+          cookie,
+          body: purchase,
+          headers: { "Idempotency-Key": key },
+        });
+        assert.equal(own.status, 201);
+        assert.notEqual(own.data.id, id);
+        assert.equal(
+          (await call(`/purchases/${own.data.id}`, { cookie: alice })).status,
+          404,
+        );
+        assert.equal(
+          (await call(`/purchases/${own.data.id}`, { cookie })).status,
+          200,
+        );
+      }
     },
   );
   await check(
@@ -450,6 +468,84 @@ for (const engine of ["dotnet", "java"]) {
         score: 18,
         rating: "LOW",
       });
+    },
+  );
+  await check(
+    "API8",
+    "PostgreSQL app role has append-only audit privileges",
+    async () => {
+      const database = `db-${engine}`;
+      const sql = (query) =>
+        execFileSync(
+          "docker",
+          [
+            "compose",
+            "exec",
+            "-T",
+            database,
+            "sh",
+            "-c",
+            'PGPASSWORD="$APP_DB_PASSWORD" exec psql -U sentinel_app -d sentinel -v ON_ERROR_STOP=1 -At -c "$1"',
+            "sentinel-sql",
+            query,
+          ],
+          { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+        );
+      assert.equal(
+        sql("SELECT rolsuper FROM pg_roles WHERE rolname=current_user").trim(),
+        "f",
+      );
+      assert.equal(
+        sql(
+          "SELECT has_table_privilege(current_user,'audit','SELECT') AND has_table_privilege(current_user,'audit','INSERT') AND NOT has_table_privilege(current_user,'audit','UPDATE') AND NOT has_table_privilege(current_user,'audit','DELETE') AND NOT has_table_privilege(current_user,'audit','TRUNCATE')",
+        ).trim(),
+        "t",
+      );
+      for (const query of [
+        "UPDATE audit SET action='PURCHASE_CREATED' WHERE false",
+        "DELETE FROM audit WHERE false",
+        "TRUNCATE audit",
+      ]) {
+        assert.throws(
+          () => sql(query),
+          (error) => /permission denied/i.test(error.stderr),
+        );
+      }
+      assert.ok(Number(sql("SELECT count(*) FROM audit").trim()) > 0);
+    },
+  );
+  await check(
+    "API6",
+    "Sessions, idempotency and daily quotas survive process restart",
+    async () => {
+      execFileSync("docker", ["compose", "restart", engine], { stdio: "pipe" });
+      let healthy = false;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        try {
+          healthy = (await fetch(`${base}/${engine}/health`)).ok;
+        } catch {
+          /* startup window */
+        }
+        if (healthy) break;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      assert.ok(healthy, "Restarted service must become ready");
+      assert.equal((await call("/me", { cookie: alice })).status, 200);
+      const replay = await call("/purchases", {
+        cookie: alice,
+        body: purchase,
+        headers: { "Idempotency-Key": key },
+      });
+      assert.equal(replay.status, 200);
+      assert.equal(replay.data.id, id);
+      const quota = await call("/purchases", {
+        cookie: alice,
+        body: purchase,
+        headers: { "Idempotency-Key": randomUUID() },
+      });
+      assert.equal(quota.status, 429);
+      assert.equal(quota.data.code, "daily_quota");
+      assert.ok(Number(quota.headers.get("retry-after")) > 0);
     },
   );
   await check(

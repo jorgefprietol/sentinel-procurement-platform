@@ -13,10 +13,12 @@
 | API9 Improper Inventory Management                   | Única versión `/api/v1`; contrato OpenAPI validado; metadata; sin rutas debug ni versiones anteriores                                                     | Rutas v0/debug/actuator ausentes y contrato disponible                                        |
 | API10 Unsafe Consumption of APIs                     | Token de proveedor; límite de 4 KB; MIME JSON, código 200, esquema cerrado, score 0–100; plazos de conexión/lectura                                       | Respuesta grande, schema inválido, HTML, retraso y respuesta válida                           |
 
-La suite `tests/security.mjs` aplica 11 escenarios compuestos por implementación y genera 22 registros de evidencia cuando todos pasan. JUnit prueba adicionalmente el KDF, la validación y los contratos de entrada. Playwright recorre solicitudes, evaluación, aprobación, auditoría y navegación móvil.
+La suite `tests/security.mjs` aplica 13 escenarios compuestos por implementación y genera 26 registros de evidencia cuando todos pasan. Incluye aislamiento de idempotencia entre propietarios y organizaciones, privilegios de auditoría en PostgreSQL real y persistencia de sesiones/cuotas tras reiniciar los procesos. JUnit prueba adicionalmente el KDF, la validación y los contratos de entrada. Playwright recorre solicitudes, evaluación, aprobación, auditoría y navegación móvil.
 
 El proveedor es una integración de referencia con modos de fallo internos autenticados. Estos modos no se enrutan a través de NGINX. Solo se usan contra el entorno propio para verificar cómo cada servicio maneja respuestas no confiables.
 
 Las cuotas son persistentes y atómicas, por lo que sobreviven a reinicios y a varias instancias de un mismo backend. La cuota diaria usa UTC; Retry-After refleja el tiempo restante hasta medianoche. La auditoría comercial comparte transacción con el cambio y evita eventos huérfanos. Los logs de error registran tipo y correlación, sin cuerpos, contraseñas ni cookies.
 
-Límites de esta evidencia: no sustituye una evaluación independiente, no certifica cumplimiento OWASP y no mide disponibilidad bajo carga distribuida. La auditoría DML es trazable, pero no es un almacenamiento inmutable. El entorno local no incorpora MFA, recuperación de cuentas ni un proveedor de identidad corporativo.
+La aplicación tiene permisos SELECT/INSERT sobre auditoría y carece de UPDATE, DELETE y TRUNCATE. Las pruebas consultan esos privilegios en PostgreSQL real y confirman que los intentos de modificación se rechazan. El administrador de la base sigue dentro del perímetro de confianza; una garantía frente a administradores requiere un destino externo inmutable.
+
+Límites de esta evidencia: no sustituye una evaluación independiente, no certifica cumplimiento OWASP y no mide disponibilidad bajo carga distribuida. El entorno local no incorpora MFA, recuperación de cuentas ni un proveedor de identidad corporativo.

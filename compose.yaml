@@ -1,6 +1,7 @@
 name: sentinel-procurement
 x-database: &database
   image: postgres:17-alpine
+  restart: unless-stopped
   environment: &database-env
     POSTGRES_DB: sentinel
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/bootstrap.mjs}

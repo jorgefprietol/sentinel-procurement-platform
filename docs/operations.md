@@ -16,7 +16,7 @@ El healthcheck de la interfaz espera que ambos servicios puedan consultar Postgr
 
 Esta configuración es un entorno de referencia ejecutable. Para una exposición pública se requiere terminación TLS, `APP_ORIGIN` HTTPS y `COOKIE_SECURE=true`. Deshabilita las identidades de referencia mediante `BOOTSTRAP_ENABLED=false` y aprovisiona cuentas con hashes individuales o adapta autenticación a un IdP con MFA. No expongas las bases ni los endpoints internos del proveedor de referencia. Sustituye el proveedor por una integración real con un destino fijo revisado y TLS.
 
-Los secretos deben provenir del gestor de secretos del entorno; las credenciales de bootstrap no son una estrategia de gestión de usuarios en producción. Define backups, restauración probada, rotación de credenciales, retención de eventos y monitoreo antes de usar datos operativos reales. El audit trail actual puede ser modificado por el usuario DML y requiere un destino inmutable si ese control es necesario.
+Los secretos deben provenir del gestor de secretos del entorno; las credenciales de bootstrap no son una estrategia de gestión de usuarios en producción. Define backups, restauración probada, rotación de credenciales, retención de eventos y monitoreo antes de usar datos operativos reales. La auditoría permite únicamente SELECT/INSERT al usuario de aplicación. Para protección frente a administradores de base de datos se requiere un destino externo inmutable.
 
 ## Pipeline
 

@@ -27,6 +27,10 @@ public class Store {
             new String[] {"carol", "south", "REQUESTER"},
             new String[] {"approver", "north", "APPROVER"},
             new String[] {"south.approver", "south", "APPROVER"})) {
+      if (Boolean.TRUE.equals(
+          db.queryForObject(
+              "SELECT EXISTS (SELECT 1 FROM users WHERE username=?)", Boolean.class, user[0])))
+        continue;
       db.update(
           "INSERT INTO users VALUES (?,?,?,?,?) ON CONFLICT (username) DO NOTHING",
           UUID.randomUUID(),
