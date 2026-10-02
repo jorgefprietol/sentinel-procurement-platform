@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 COPY services/partner/server.mjs .
 USER node
