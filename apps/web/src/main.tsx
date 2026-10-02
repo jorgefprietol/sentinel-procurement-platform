@@ -115,10 +115,19 @@ function App() {
     dotnet: false,
     java: false,
   });
+  function clearSession() {
+    setActor(null);
+    setRows([]);
+    setAudit([]);
+    setRisk(null);
+    setTab("overview");
+    setShowCreate(false);
+    setNotice("");
+  }
   function fail(e: unknown) {
     if (e instanceof ApiFailure) {
       setError(messages[e.code] || "No se pudo completar la operación.");
-      if (e.status === 401) setActor(null);
+      if (e.status === 401) clearSession();
     } else setError("No fue posible conectar con el servicio.");
   }
   async function refresh(current = engine) {
@@ -127,11 +136,8 @@ function App() {
   }
   useEffect(() => {
     let active = true;
-    setActor(null);
-    setRows([]);
-    setAudit([]);
+    clearSession();
     setError("");
-    setRisk(null);
     setLoading(true);
     api<Actor>(engine, "/me")
       .then(async (user) => {
@@ -179,8 +185,11 @@ function App() {
         username: data.get("username"),
         password: data.get("password"),
       });
-      setActor(await api<Actor>(engine, "/me"));
-      await refresh();
+      const user = await api<Actor>(engine, "/me");
+      const purchases = await api<Purchase[]>(engine, "/purchases?limit=50");
+      clearSession();
+      setRows(purchases);
+      setActor(user);
     });
   }
   async function create(event: React.FormEvent<HTMLFormElement>) {
@@ -306,8 +315,7 @@ function App() {
                 onClick={() =>
                   run(async () => {
                     await api(engine, "/auth/logout", {});
-                    setActor(null);
-                    setRows([]);
+                    clearSession();
                   })
                 }
               >
@@ -501,7 +509,7 @@ function App() {
                 </p>
               </section>
             </div>
-          ) : tab === "audit" ? (
+          ) : tab === "audit" && actor.role === "APPROVER" ? (
             <section className="panel">
               <div className="panel-heading">
                 <h2>Últimos eventos</h2>

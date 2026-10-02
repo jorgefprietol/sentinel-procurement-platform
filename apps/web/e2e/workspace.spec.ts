@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import "../../../scripts/env.mjs";
 test("Requester creates a purchase and approver records a decision in both backends", async ({
   page,
-}) => {
+}, testInfo) => {
   for (const implementation of [".NET", "Java"]) {
     await page.goto("/");
     await page
@@ -33,9 +33,32 @@ test("Requester creates a purchase and approver records a decision in both backe
     await page.getByRole("button", { name: "Entrar al workspace" }).click();
     await row.getByRole("button", { name: "Aprobar", exact: true }).click();
     await expect(row).toContainText("Aprobada");
+    const screenshot = testInfo.outputPath(
+      `${implementation === ".NET" ? "dotnet" : "java"}-workspace.png`,
+    );
+    await page.screenshot({ path: screenshot, fullPage: true });
+    await testInfo.attach(`${implementation} workspace`, {
+      path: screenshot,
+      contentType: "image/png",
+    });
     await page.getByRole("button", { name: "Auditoría", exact: true }).click();
     await expect(page.getByRole("table")).toContainText("PURCHASE_APPROVED");
     await page.getByRole("button", { name: /approver · Salir/ }).click();
+    await page.getByLabel("Usuario", { exact: true }).fill("bob");
+    await page
+      .getByLabel("Contraseña", { exact: true })
+      .fill(process.env.BOOTSTRAP_PASSWORD!);
+    await page.getByRole("button", { name: "Entrar al workspace" }).click();
+    await expect(
+      page.getByRole("button", { name: "Auditoría", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("PURCHASE_APPROVED", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("row").filter({ hasText: title }),
+    ).toContainText("Aprobada");
+    await page.getByRole("button", { name: /bob · Salir/ }).click();
   }
 });
 test("Controls and login remain usable at mobile width", async ({ page }) => {

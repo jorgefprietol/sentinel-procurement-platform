@@ -8,4 +8,4 @@ Implementación de flujos de compras idempotentes y aprobaciones transaccionales
 
 **Stack:** C#, .NET 10, Java 21, Spring Boot 4, React, TypeScript, PostgreSQL, Docker, NGINX, GitHub Actions, CodeQL, Trivy y Playwright.
 
-**Evidencia:** código público, contrato OpenAPI, pruebas automatizadas y artefactos de cada ejecución del pipeline. Esta descripción corresponde al trabajo implementado en este proyecto; no implica empleo, clientes, certificaciones ni métricas operativas no documentadas.
+**Evidencia:** código público, contrato OpenAPI, pruebas automatizadas y artefactos de cada ejecución del pipeline.

@@ -23,6 +23,7 @@ public static class Security
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         PropertyNameCaseInsensitive = false,
+        NumberHandling = JsonNumberHandling.Strict,
     };
 
     public static string Required(string name) =>

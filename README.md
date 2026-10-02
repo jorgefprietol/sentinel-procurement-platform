@@ -5,7 +5,7 @@
 
 Plataforma de compras y aprobaciones con controles de seguridad de APIs, aislamiento entre organizaciones y auditoría transaccional. Dos servicios implementan el mismo contrato en **C# / ASP.NET Core 10** y **Java 21 / Spring Boot 4**, con una aplicación **React 19 + TypeScript** para operar ambos desde un único workspace.
 
-El proyecto demuestra experiencia de implementación en backend, frontend, persistencia, seguridad aplicada y automatización DevSecOps. Su alcance y evidencia están documentados; no presupone un despliegue comercial ni una certificación de cumplimiento.
+El proyecto demuestra experiencia de implementación en backend, frontend, persistencia, seguridad aplicada y automatización DevSecOps, con código, contratos y verificaciones reproducibles.
 
 ## Capacidades
 
