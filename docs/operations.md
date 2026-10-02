@@ -30,6 +30,8 @@ Los reportes JSON de Trivy conservan vulnerabilidades corregibles y no corregibl
 
 El servicio Java aplica parches compatibles sobre las versiones administradas por Spring Boot 4.0.8: Jackson 2.21.7 y 3.1.7 mediante sus BOM, y Tomcat 11.0.26. Estas versiones corrigen los hallazgos de dependencias detectados por el pipeline. Revisa esos overrides al actualizar Spring Boot, conservando versiones corregidas. Referencias: [BOM de Spring Boot](https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-dependencies/4.0.8/spring-boot-dependencies-4.0.8.pom), [BOM de Jackson](https://github.com/FasterXML/jackson-bom) y [avisos de seguridad de Tomcat](https://tomcat.apache.org/security-11.html).
 
+El proveedor de referencia utiliza exclusivamente módulos nativos de Node. Su imagen elimina npm y Yarn, incluyendo sus dependencias, porque no instala paquetes durante la ejecución. El escáner verifica la imagen resultante completa.
+
 ## Datos y recuperación
 
 Las bases viven en los volúmenes `dotnet-data` y `java-data`. `docker compose down` conserva los datos; `down -v` los elimina. Cambiar la contraseña de entorno no cambia las contraseñas dentro de volúmenes existentes; una rotación requiere una operación administrativa en PostgreSQL. Las migraciones de este proyecto inicializan bases nuevas; la evolución del esquema sobre bases existentes necesita una migración versionada adicional.
