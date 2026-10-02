@@ -155,7 +155,13 @@ api.MapPost(
         }
     )
     .AddEndpointFilter<OriginFilter>();
-api.MapGet("/audit", async (HttpContext c) => Results.Ok(await store.AuditList(Actor(c))));
+api.MapGet(
+    "/audit",
+    async (HttpContext c) =>
+    {
+        return Results.Ok(await store.AuditList(Actor(c)));
+    }
+);
 api.MapGet(
     "/vendors/{vendor}/risk",
     async (string vendor, Partner partner) => Results.Ok(await partner.Risk(vendor))

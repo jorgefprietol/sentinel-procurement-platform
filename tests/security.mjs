@@ -283,7 +283,17 @@ for (const engine of ["dotnet", "java"]) {
         ),
       );
       assert.deepEqual(races.map((r) => r.status).sort(), [200, 409]);
-      const northAudit = (await call("/audit", { cookie: approver })).data;
+      const auditResponse = await call("/audit", { cookie: approver });
+      assert.equal(
+        auditResponse.status,
+        200,
+        JSON.stringify(auditResponse.data),
+      );
+      assert.ok(
+        Array.isArray(auditResponse.data),
+        "Audit must return a JSON array",
+      );
+      const northAudit = auditResponse.data;
       assert.equal(
         northAudit.filter(
           (event) =>
