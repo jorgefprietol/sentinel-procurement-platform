@@ -12,14 +12,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class SecurityFilter extends OncePerRequestFilter {
-  private final Store store;
-  private final String origin = System.getenv("APP_ORIGIN");
-
-  public SecurityFilter(Store store) {
-    this.store = store;
-    if (origin == null) throw new IllegalStateException("APP_ORIGIN required");
-  }
-
   static String token(HttpServletRequest request) {
     if (request.getCookies() != null)
       for (var c : request.getCookies())
@@ -38,20 +30,13 @@ public class SecurityFilter extends OncePerRequestFilter {
       if (request.getContentLengthLong() > 8192) throw new Failure(413, "body_too_large");
       if (request.getQueryString() != null && request.getQueryString().length() > 512)
         throw new Failure(400, "invalid_query");
-      if (request.getMethod().equals("POST")
-          && (!origin.equals(request.getHeader("Origin"))
-              || !"web".equals(request.getHeader("X-Sentinel-Client"))))
-        throw new Failure(403, "invalid_origin");
-      var path = request.getRequestURI();
-      if (path.equals("/api/v1/auth/login")) store.limit("login-global", 50, 60);
-      else if (path.startsWith("/api/v1/") && !path.equals("/api/v1/meta")) {
-        var actor = store.authenticate(token(request));
-        request.setAttribute("actor", actor);
-        store.limit("user:" + actor.id(), 120, 60);
-      }
       chain.doFilter(request, response);
     } catch (Failure e) {
       error(response, e.status, e.getMessage());
+    } catch (Exception e) {
+      org.slf4j.LoggerFactory.getLogger(SecurityFilter.class)
+          .error("Request failed with {}", e.getClass().getSimpleName());
+      if (!response.isCommitted()) error(response, 500, "internal_error");
     }
   }
 

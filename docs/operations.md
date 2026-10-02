@@ -22,6 +22,10 @@ Los secretos deben provenir del gestor de secretos del entorno; las credenciales
 
 Los pull requests ejecutan compilación, OpenAPI, dependencias, pruebas de integración y controles de imágenes. La rama main publica cuatro imágenes en GHCR con etiqueta de commit y latest después de completar esas verificaciones. CodeQL se ejecuta en su propio workflow; su estado debe configurarse como comprobación requerida antes de integrar cambios. El pipeline no despliega a un servidor público.
 
+La publicación también exige que no existan hallazgos CodeQL HIGH/CRITICAL abiertos en la referencia analizada. El análisis usa un modo de compilación específico para cada lenguaje. Los escaneos de Trivy identifican dependencias a partir de los artefactos mediante `--offline-scan`, mientras la base de vulnerabilidades se actualiza normalmente; esto evita resolución de POM externos durante el escaneo.
+
+Las redes reservadas para este proyecto son `10.250.130.0/24` (gateway), `10.250.131.0/24` (datos) y `10.250.132.0/24` (proveedor). Si existe una ruta o red corporativa incompatible, cambia esos valores antes de iniciar el entorno. Los rangos explícitos permiten coexistir con otros proyectos sin agotar el pool predeterminado de Docker.
+
 Los reportes JSON de Trivy conservan vulnerabilidades corregibles y no corregibles. La política bloquea HIGH/CRITICAL corregibles; las demás se revisan en los artefactos. No se omiten hallazgos mediante una lista de excepciones no documentada.
 
 ## Datos y recuperación

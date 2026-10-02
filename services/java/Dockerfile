@@ -1,7 +1,6 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /src
 COPY services/java/pom.xml .
-RUN --mount=type=cache,id=sentinel-maven,target=/root/.m2,sharing=locked mvn -B -Djava.net.preferIPv4Stack=true dependency:go-offline
 COPY services/java/src src
 RUN --mount=type=cache,id=sentinel-maven,target=/root/.m2,sharing=locked mvn -B -Djava.net.preferIPv4Stack=true verify
 FROM eclipse-temurin:21-jre-alpine

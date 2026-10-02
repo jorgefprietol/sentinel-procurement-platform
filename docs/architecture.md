@@ -10,6 +10,8 @@ React + TypeScript proporciona una interfaz compacta para solicitudes, aprobacio
 
 Las entradas no aceptan organización, propietario, estado ni rol. El actor se obtiene mediante el hash de la cookie y una sesión no expirada. Todas las consultas comerciales filtran el tenant; los solicitantes también filtran su identidad. Los aprobadores ven compras de su organización y no pueden crear compras.
 
+C# vincula la autenticación al grupo de endpoints privados y la validación de origen a cada mutación mediante filtros de endpoints. Java usa metadata de métodos de Spring MVC, con acceso privado por defecto y tres endpoints públicos explícitos. Las decisiones sobre ejecutar autenticación no comparan rutas ni métodos obtenidos del cliente. El framework selecciona el endpoint y sus controles se ejecutan antes del flujo comercial.
+
 Crear una compra bloquea la fila del solicitante, consulta una idempotencia previa, verifica la cuota UTC, inserta compra y auditoría y confirma una única transacción. Una restricción única protege `(owner_id, idempotency_key)`. La decisión bloquea la compra, valida PENDING y escribe estado y evento en una transacción. No se usa estado en memoria para controlar estas invariantes.
 
 ## Autenticación y CSRF

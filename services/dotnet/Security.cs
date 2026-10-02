@@ -16,8 +16,6 @@ public record Login(string Username, string Password);
 
 public record CreatePurchase(string Title, long AmountCents, string Vendor);
 
-public record Decision(string DecisionValue);
-
 public static class Security
 {
     public const int Iterations = 600_000;

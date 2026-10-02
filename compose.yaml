@@ -104,16 +104,21 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget -q -O /dev/null http://localhost:8080/dotnet/health && wget -q -O /dev/null http://localhost:8080/java/health",
+          "wget -q -O /dev/null http://127.0.0.1:8080/dotnet/health && wget -q -O /dev/null http://127.0.0.1:8080/java/health",
         ]
       interval: 5s
       timeout: 3s
       start_period: 45s
       retries: 30
 networks:
-  gateway: {}
-  data: { internal: true }
-  partners: { internal: true }
+  gateway:
+    ipam: { config: [{ subnet: "10.250.130.0/24" }] }
+  data:
+    internal: true
+    ipam: { config: [{ subnet: "10.250.131.0/24" }] }
+  partners:
+    internal: true
+    ipam: { config: [{ subnet: "10.250.132.0/24" }] }
 volumes:
   dotnet-data: {}
   java-data: {}

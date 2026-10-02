@@ -33,12 +33,14 @@ public class Api {
             + (secure ? "; Secure" : ""));
   }
 
+  @PublicEndpoint
   @GetMapping("/health")
   Map<String, String> health() {
     if (!store.healthy()) throw new Failure(503, "unavailable");
     return Map.of("status", "UP");
   }
 
+  @PublicEndpoint
   @GetMapping("/api/v1/meta")
   Map<String, Object> meta() {
     return Map.of(
@@ -54,8 +56,10 @@ public class Api {
         10);
   }
 
+  @PublicEndpoint
   @PostMapping("/api/v1/auth/login")
   Map<String, Boolean> login(HttpServletRequest r, HttpServletResponse response) {
+    store.limit("login-global", 50, 60);
     cookie(response, store.login(body(r, Login.class)), 1800);
     return Map.of("authenticated", true);
   }

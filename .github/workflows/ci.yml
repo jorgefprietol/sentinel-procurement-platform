@@ -11,6 +11,21 @@ jobs:
   codeql:
     uses: ./.github/workflows/codeql.yml
     permissions: { contents: read, actions: read, security-events: write }
+  codeql-policy:
+    name: CodeQL security policy
+    needs: codeql
+    runs-on: ubuntu-latest
+    permissions: { contents: read, security-events: read }
+    steps:
+      - name: Block open HIGH or CRITICAL findings for this ref
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh api --method GET "repos/$GITHUB_REPOSITORY/code-scanning/alerts" -f state=open -f ref="$GITHUB_REF" --paginate --jq '.[] | select(.rule.security_severity_level == "high" or .rule.security_severity_level == "critical") | .number' > "$RUNNER_TEMP/codeql-blockers.txt"
+          if [ -s "$RUNNER_TEMP/codeql-blockers.txt" ]; then
+            echo '::error::Open HIGH/CRITICAL CodeQL findings block publication.'
+            cat "$RUNNER_TEMP/codeql-blockers.txt"
+            exit 1
+          fi
   verify:
     name: Build, security and browser verification
     runs-on: ubuntu-latest
@@ -71,7 +86,7 @@ jobs:
           { name: verification-evidence, path: artifacts/, retention-days: 14 }
   publish:
     name: Publish ${{ matrix.component }}
-    needs: [verify, codeql]
+    needs: [verify, codeql-policy]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions: { contents: read, packages: write }

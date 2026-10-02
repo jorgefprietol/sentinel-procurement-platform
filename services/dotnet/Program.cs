@@ -15,9 +15,6 @@ var app = builder.Build();
 var store = app.Services.GetRequiredService<Store>();
 if (Environment.GetEnvironmentVariable("BOOTSTRAP_ENABLED") == "true")
     await store.Seed(Security.Required("BOOTSTRAP_PASSWORD"));
-var origin =
-    Environment.GetEnvironmentVariable("APP_ORIGIN")
-    ?? throw new InvalidOperationException("APP_ORIGIN required");
 var secureCookie = Environment.GetEnvironmentVariable("COOKIE_SECURE") != "false";
 CookieOptions cookieOptions = new()
 {
@@ -39,25 +36,6 @@ app.Use(
                 throw new ApiError(400, "invalid_query");
             if (context.Request.ContentLength > 8192)
                 throw new ApiError(413, "body_too_large");
-            if (HttpMethods.IsPost(context.Request.Method))
-            {
-                if (
-                    context.Request.Headers.Origin != origin
-                    || context.Request.Headers["X-Sentinel-Client"] != "web"
-                )
-                    throw new ApiError(403, "invalid_origin");
-            }
-            if (context.Request.Path == "/api/v1/auth/login")
-                await store.Limit("login-global", 50, 60);
-            else if (
-                context.Request.Path.StartsWithSegments("/api/v1")
-                && context.Request.Path != "/api/v1/meta"
-            )
-            {
-                var actor = await store.Authenticate(context.Request.Cookies["sentinel_cs"]);
-                context.Items["actor"] = actor;
-                await store.Limit("user:" + actor.Id, 120, 60);
-            }
             await next();
         }
         catch (ApiError error)
@@ -112,26 +90,30 @@ app.MapGet(
         }
 );
 app.MapPost(
-    "/api/v1/auth/login",
-    async (HttpContext c) =>
-    {
-        var token = await store.Login(await Security.Body<Login>(c.Request));
-        c.Response.Cookies.Append("sentinel_cs", token, cookieOptions);
-        return Results.Ok(new { authenticated = true });
-    }
-);
-app.MapPost(
-    "/api/v1/auth/logout",
-    async (HttpContext c) =>
-    {
-        await store.Logout(c.Request.Cookies["sentinel_cs"]!);
-        c.Response.Cookies.Delete("sentinel_cs", cookieOptions);
-        return Results.NoContent();
-    }
-);
-app.MapGet("/api/v1/me", (HttpContext c) => Actor(c));
-app.MapGet(
-    "/api/v1/purchases",
+        "/api/v1/auth/login",
+        async (HttpContext c) =>
+        {
+            await store.Limit("login-global", 50, 60);
+            var token = await store.Login(await Security.Body<Login>(c.Request));
+            c.Response.Cookies.Append("sentinel_cs", token, cookieOptions);
+            return Results.Ok(new { authenticated = true });
+        }
+    )
+    .AddEndpointFilter<OriginFilter>();
+var api = app.MapGroup("/api/v1").AddEndpointFilter<SessionFilter>();
+api.MapPost(
+        "/auth/logout",
+        async (HttpContext c) =>
+        {
+            await store.Logout(c.Request.Cookies["sentinel_cs"]!);
+            c.Response.Cookies.Delete("sentinel_cs", cookieOptions);
+            return Results.NoContent();
+        }
+    )
+    .AddEndpointFilter<OriginFilter>();
+api.MapGet("/me", (HttpContext c) => Actor(c));
+api.MapGet(
+    "/purchases",
     async (HttpContext c) =>
     {
         var raw = c.Request.Query["limit"].ToString();
@@ -140,40 +122,42 @@ app.MapGet(
         return Results.Ok(await store.List(Actor(c), limit));
     }
 );
-app.MapGet(
-    "/api/v1/purchases/{id:guid}",
+api.MapGet(
+    "/purchases/{id:guid}",
     async (HttpContext c, Guid id) => Results.Ok(await store.Get(Actor(c), id))
 );
-app.MapPost(
-    "/api/v1/purchases",
-    async (HttpContext c) =>
-    {
-        if (!Guid.TryParse(c.Request.Headers["Idempotency-Key"], out var key))
-            throw new ApiError(400, "idempotency_key_required");
-        var result = await store.Create(
-            Actor(c),
-            await Security.Body<CreatePurchase>(c.Request),
-            key
-        );
-        return Results.Json(
-            await store.Get(Actor(c), result.Id),
-            statusCode: result.Replay ? 200 : 201
-        );
-    }
-);
-app.MapPost(
-    "/api/v1/purchases/{id:guid}/decision",
-    async (HttpContext c, Guid id) =>
-    {
-        // Wire name remains identical in both implementations.
-        var body = await Security.Body<DecisionBody>(c.Request);
-        await store.Decide(Actor(c), id, body.Decision);
-        return Results.Ok(await store.Get(Actor(c), id));
-    }
-);
-app.MapGet("/api/v1/audit", async (HttpContext c) => Results.Ok(await store.AuditList(Actor(c))));
-app.MapGet(
-    "/api/v1/vendors/{vendor}/risk",
+api.MapPost(
+        "/purchases",
+        async (HttpContext c) =>
+        {
+            if (!Guid.TryParse(c.Request.Headers["Idempotency-Key"], out var key))
+                throw new ApiError(400, "idempotency_key_required");
+            var result = await store.Create(
+                Actor(c),
+                await Security.Body<CreatePurchase>(c.Request),
+                key
+            );
+            return Results.Json(
+                await store.Get(Actor(c), result.Id),
+                statusCode: result.Replay ? 200 : 201
+            );
+        }
+    )
+    .AddEndpointFilter<OriginFilter>();
+api.MapPost(
+        "/purchases/{id:guid}/decision",
+        async (HttpContext c, Guid id) =>
+        {
+            // Wire name remains identical in both implementations.
+            var body = await Security.Body<DecisionBody>(c.Request);
+            await store.Decide(Actor(c), id, body.Decision);
+            return Results.Ok(await store.Get(Actor(c), id));
+        }
+    )
+    .AddEndpointFilter<OriginFilter>();
+api.MapGet("/audit", async (HttpContext c) => Results.Ok(await store.AuditList(Actor(c))));
+api.MapGet(
+    "/vendors/{vendor}/risk",
     async (string vendor, Partner partner) => Results.Ok(await partner.Risk(vendor))
 );
 app.Run();

@@ -1,10 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { writeFileSync, existsSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const destination = fileURLToPath(new URL("../.env", import.meta.url));
-if (existsSync(destination)) {
-  console.log("Existing .env preserved.");
-} else {
+try {
   const secret = () => randomBytes(32).toString("hex");
   writeFileSync(
     destination,
@@ -14,4 +12,7 @@ if (existsSync(destination)) {
   console.log(
     "Local secrets generated in .env. Read BOOTSTRAP_PASSWORD there to sign in.",
   );
+} catch (error) {
+  if (error.code !== "EEXIST") throw error;
+  console.log("Existing .env preserved.");
 }
