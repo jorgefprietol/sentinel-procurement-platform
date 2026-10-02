@@ -12,7 +12,9 @@ test("Requester creates a purchase and approver records a decision in both backe
     await page
       .getByLabel("Contraseña", { exact: true })
       .fill(process.env.BOOTSTRAP_PASSWORD!);
-    await expect(page.getByLabel("Usuario", { exact: true })).toHaveValue("bob");
+    await expect(page.getByLabel("Usuario", { exact: true })).toHaveValue(
+      "bob",
+    );
     await page.getByRole("button", { name: "Entrar al workspace" }).click();
     await page.getByRole("button", { name: "+ Nueva solicitud" }).click();
     const title = `Licencias de protección de endpoints · ${implementation}`;
