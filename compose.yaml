@@ -1,0 +1,118 @@
+name: sentinel-procurement
+x-database: &database
+  image: postgres:17-alpine
+  environment: &database-env
+    POSTGRES_DB: sentinel
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/bootstrap.mjs}
+    APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Run node scripts/bootstrap.mjs}
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U postgres -d sentinel"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+  networks: [data]
+  mem_limit: 256m
+  pids_limit: 100
+x-runtime: &runtime
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 150
+services:
+  db-dotnet:
+    <<: *database
+    volumes:
+      [
+        "dotnet-data:/var/lib/postgresql/data",
+        "./database:/docker-entrypoint-initdb.d:ro",
+      ]
+  db-java:
+    <<: *database
+    volumes:
+      [
+        "java-data:/var/lib/postgresql/data",
+        "./database:/docker-entrypoint-initdb.d:ro",
+      ]
+  dotnet:
+    <<: *runtime
+    build: { context: ., dockerfile: services/dotnet/Dockerfile }
+    image: sentinel-dotnet:local
+    environment:
+      DB_CONNECTION: Host=db-dotnet;Database=sentinel;Username=sentinel_app;Password=${APP_DB_PASSWORD}
+      BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:?Run node scripts/bootstrap.mjs}
+      BOOTSTRAP_ENABLED: ${BOOTSTRAP_ENABLED:-true}
+      PARTNER_TOKEN: ${PARTNER_TOKEN:?Run node scripts/bootstrap.mjs}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:18130}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      DOTNET_EnableDiagnostics: "0"
+    depends_on:
+      {
+        db-dotnet: { condition: service_healthy },
+        partner: { condition: service_healthy },
+      }
+    networks: [gateway, data, partners]
+    mem_limit: 384m
+  java:
+    <<: *runtime
+    build: { context: ., dockerfile: services/java/Dockerfile }
+    image: sentinel-java:local
+    environment:
+      DB_URL: jdbc:postgresql://db-java:5432/sentinel
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD}
+      BOOTSTRAP_ENABLED: ${BOOTSTRAP_ENABLED:-true}
+      PARTNER_TOKEN: ${PARTNER_TOKEN}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:18130}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    depends_on:
+      {
+        db-java: { condition: service_healthy },
+        partner: { condition: service_healthy },
+      }
+    networks: [gateway, data, partners]
+    mem_limit: 512m
+  partner:
+    <<: *runtime
+    build: { context: ., dockerfile: services/partner/Dockerfile }
+    image: sentinel-partner:local
+    environment: { PARTNER_TOKEN: "${PARTNER_TOKEN}" }
+    networks: [partners]
+    mem_limit: 96m
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  web:
+    <<: *runtime
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    image: sentinel-web:local
+    ports: ["127.0.0.1:${WEB_PORT:-18130}:8080"]
+    depends_on: [dotnet, java]
+    networks: [gateway]
+    mem_limit: 96m
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://localhost:8080/dotnet/health && wget -q -O /dev/null http://localhost:8080/java/health",
+        ]
+      interval: 5s
+      timeout: 3s
+      start_period: 45s
+      retries: 30
+networks:
+  gateway: {}
+  data: { internal: true }
+  partners: { internal: true }
+volumes:
+  dotnet-data: {}
+  java-data: {}

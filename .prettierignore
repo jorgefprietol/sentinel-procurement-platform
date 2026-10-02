@@ -1,0 +1,10 @@
+.env*
+artifacts/
+**/node_modules/
+**/dist/
+**/bin/
+**/obj/
+**/target/
+**/*.java
+**/*.cs
+**/package-lock.json

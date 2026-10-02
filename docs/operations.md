@@ -1,0 +1,29 @@
+# Operación
+
+## Entorno reproducible
+
+El comando bootstrap crea secretos aleatorios fuera de Git. Compose usa PostgreSQL 17 y crea un rol `sentinel_app` separado del administrador de inicialización. El SQL de creación de rol parametriza la contraseña. Los servicios inicializan identidades de referencia únicamente si `BOOTSTRAP_ENABLED=true`; no sobrescriben hashes existentes.
+
+```sh
+docker compose ps
+docker compose logs --tail=80 dotnet java
+docker compose down
+```
+
+El healthcheck de la interfaz espera que ambos servicios puedan consultar PostgreSQL. Los servicios permanecen sin exposición directa. El puerto de la UI solo es accesible desde el equipo local. Utiliza exactamente el host de `APP_ORIGIN`; `localhost` y `127.0.0.1` son orígenes diferentes.
+
+## Despliegue fuera del equipo local
+
+Esta configuración es un entorno de referencia ejecutable. Para una exposición pública se requiere terminación TLS, `APP_ORIGIN` HTTPS y `COOKIE_SECURE=true`. Deshabilita las identidades de referencia mediante `BOOTSTRAP_ENABLED=false` y aprovisiona cuentas con hashes individuales o adapta autenticación a un IdP con MFA. No expongas las bases ni los endpoints internos del proveedor de referencia. Sustituye el proveedor por una integración real con un destino fijo revisado y TLS.
+
+Los secretos deben provenir del gestor de secretos del entorno; las credenciales de bootstrap no son una estrategia de gestión de usuarios en producción. Define backups, restauración probada, rotación de credenciales, retención de eventos y monitoreo antes de usar datos operativos reales. El audit trail actual puede ser modificado por el usuario DML y requiere un destino inmutable si ese control es necesario.
+
+## Pipeline
+
+Los pull requests ejecutan compilación, OpenAPI, dependencias, pruebas de integración y controles de imágenes. La rama main publica cuatro imágenes en GHCR con etiqueta de commit y latest después de completar esas verificaciones. CodeQL se ejecuta en su propio workflow; su estado debe configurarse como comprobación requerida antes de integrar cambios. El pipeline no despliega a un servidor público.
+
+Los reportes JSON de Trivy conservan vulnerabilidades corregibles y no corregibles. La política bloquea HIGH/CRITICAL corregibles; las demás se revisan en los artefactos. No se omiten hallazgos mediante una lista de excepciones no documentada.
+
+## Datos y recuperación
+
+Las bases viven en los volúmenes `dotnet-data` y `java-data`. `docker compose down` conserva los datos; `down -v` los elimina. Cambiar la contraseña de entorno no cambia las contraseñas dentro de volúmenes existentes; una rotación requiere una operación administrativa en PostgreSQL. Las migraciones de este proyecto inicializan bases nuevas; la evolución del esquema sobre bases existentes necesita una migración versionada adicional.

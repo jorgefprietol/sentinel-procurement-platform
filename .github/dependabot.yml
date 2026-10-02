@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule: { interval: weekly }
+  - package-ecosystem: nuget
+    directory: /services/dotnet
+    schedule: { interval: weekly }
+  - package-ecosystem: maven
+    directory: /services/java
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directories:
+      [/services/dotnet, /services/java, /services/partner, /apps/web]
+    schedule: { interval: weekly }

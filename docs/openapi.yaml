@@ -1,0 +1,347 @@
+openapi: 3.0.3
+info:
+  title: Sentinel Procurement API
+  version: 1.0.0
+  description: Equivalent C# and Java purchase APIs. Cookie sessions expire after 30 minutes. All POST operations require the exact configured Origin and X-Sentinel-Client header.
+servers:
+  - { url: /dotnet/api/v1, description: ASP.NET Core }
+  - { url: /java/api/v1, description: Spring Boot }
+security:
+  - dotnetSession: []
+  - javaSession: []
+paths:
+  /meta:
+    get:
+      operationId: metadata
+      security: []
+      responses:
+        "200": { description: Service inventory and active API version }
+  /auth/login:
+    post:
+      operationId: login
+      security: []
+      parameters:
+        [
+          { $ref: "#/components/parameters/Client" },
+          { $ref: "#/components/parameters/Origin" },
+        ]
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: "#/components/schemas/Login" } }
+      responses:
+        "200":
+          {
+            description: "HttpOnly SameSite Strict cookie issued, Max-Age 1800 seconds",
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/Throttled" }
+  /auth/logout:
+    post:
+      operationId: logout
+      parameters:
+        [
+          { $ref: "#/components/parameters/Client" },
+          { $ref: "#/components/parameters/Origin" },
+        ]
+      responses:
+        "204": { description: Session revoked and cookie deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /me:
+    get:
+      operationId: currentUser
+      responses:
+        "200":
+          description: Authenticated profile without password material
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/Actor" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /purchases:
+    get:
+      operationId: listPurchases
+      parameters:
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 50, default: 20 },
+          }
+      responses:
+        "200":
+          description: Latest purchases visible to this principal, ordered by creation timestamp and ID
+          content:
+            application/json:
+              {
+                schema:
+                  {
+                    type: array,
+                    maxItems: 50,
+                    items: { $ref: "#/components/schemas/Purchase" },
+                  },
+              }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/Throttled" }
+    post:
+      operationId: createPurchase
+      description: REQUESTER role only. Maximum five purchases per UTC day. The same key with the same parsed payload returns the original resource; a changed payload returns 409. Creation and audit are one transaction.
+      parameters:
+        - { $ref: "#/components/parameters/Client" }
+        - { $ref: "#/components/parameters/Origin" }
+        - {
+            name: Idempotency-Key,
+            in: header,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            { schema: { $ref: "#/components/schemas/CreatePurchase" } }
+      responses:
+        "201": { $ref: "#/components/responses/Purchase" }
+        "200": { $ref: "#/components/responses/Purchase" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { description: Body exceeds 8192 bytes }
+        "415": { description: application/json required }
+        "429": { $ref: "#/components/responses/Throttled" }
+  /purchases/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      operationId: getPurchase
+      responses:
+        "200": { $ref: "#/components/responses/Purchase" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /purchases/{id}/decision:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      operationId: decidePurchase
+      description: APPROVER role within the purchase tenant. Self-approval and repeated decisions are denied. Concurrent decisions serialize under a database row lock.
+      parameters:
+        [
+          { $ref: "#/components/parameters/Client" },
+          { $ref: "#/components/parameters/Origin" },
+        ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                { decision: { type: string, enum: [APPROVED, REJECTED] } }
+      responses:
+        "200": { $ref: "#/components/responses/Purchase" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /audit:
+    get:
+      operationId: auditEvents
+      description: APPROVER only; last 50 events in the authenticated tenant.
+      responses:
+        "200":
+          description: Scoped audit events
+          content:
+            application/json:
+              {
+                schema:
+                  {
+                    type: array,
+                    maxItems: 50,
+                    items: { $ref: "#/components/schemas/Audit" },
+                  },
+              }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /vendors/{vendor}/risk:
+    get:
+      operationId: vendorRisk
+      parameters:
+        - {
+            name: vendor,
+            in: path,
+            required: true,
+            schema: { type: string, enum: [acme, globex] },
+          }
+      responses:
+        "200":
+          description: Validated vendor risk from the internal reference provider
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [vendor, score, rating]
+                properties:
+                  vendor: { type: string, enum: [acme, globex] }
+                  score: { type: integer, minimum: 0, maximum: 100 }
+                  rating: { type: string, enum: [LOW, MEDIUM, HIGH] }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502":
+          {
+            description: "Provider failed schema, size, MIME, status or timeout validation",
+          }
+components:
+  securitySchemes:
+    dotnetSession: { type: apiKey, in: cookie, name: sentinel_cs }
+    javaSession: { type: apiKey, in: cookie, name: sentinel_java }
+  parameters:
+    Client:
+      {
+        name: X-Sentinel-Client,
+        in: header,
+        required: true,
+        schema: { type: string, enum: [web] },
+      }
+    Origin:
+      {
+        name: Origin,
+        in: header,
+        required: true,
+        schema: { type: string, format: uri },
+        description: Must exactly match APP_ORIGIN,
+      }
+    Id:
+      {
+        name: id,
+        in: path,
+        required: true,
+        schema: { type: string, format: uuid },
+      }
+  schemas:
+    Login:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: { type: string, maxLength: 80 }
+        password: { type: string, maxLength: 256, writeOnly: true }
+    Actor:
+      type: object
+      additionalProperties: false
+      required: [id, tenant, username, role]
+      properties:
+        id: { type: string, format: uuid }
+        tenant: { type: string }
+        username: { type: string }
+        role: { type: string, enum: [REQUESTER, APPROVER] }
+    CreatePurchase:
+      type: object
+      additionalProperties: false
+      required: [title, amountCents, vendor]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 120 }
+        amountCents:
+          { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+        vendor: { type: string, enum: [acme, globex] }
+    Purchase:
+      type: object
+      additionalProperties: false
+      required: [id, title, amountCents, vendor, status, createdAt, ownerId]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        amountCents: { type: integer, format: int64 }
+        vendor: { type: string, enum: [acme, globex] }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        createdAt: { type: string, format: date-time }
+        ownerId: { type: string, format: uuid }
+    Audit:
+      type: object
+      additionalProperties: false
+      required: [id, actor, action, objectId, createdAt]
+      properties:
+        id: { type: integer, format: int64 }
+        actor: { type: string }
+        action:
+          {
+            type: string,
+            enum: [PURCHASE_CREATED, PURCHASE_APPROVED, PURCHASE_REJECTED],
+          }
+        objectId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    Error:
+      type: object
+      properties:
+        code: { type: string }
+        traceId: { type: string }
+  responses:
+    Purchase:
+      {
+        description: Visible purchase,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/Purchase" } },
+          },
+      }
+    BadRequest:
+      {
+        description: "Invalid contract, property or input",
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/Error" } },
+          },
+      }
+    Unauthorized:
+      {
+        description: "Missing, expired or revoked session",
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/Error" } },
+          },
+      }
+    Forbidden:
+      {
+        description: Role or origin check failed,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/Error" } },
+          },
+      }
+    NotFound:
+      {
+        description: Object absent or outside authorization scope,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/Error" } },
+          },
+      }
+    Conflict:
+      {
+        description: Idempotency mismatch or an existing decision,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/Error" } },
+          },
+      }
+    Throttled:
+      description: Account, global, user or daily business limit reached
+      headers:
+        {
+          Retry-After:
+            {
+              schema: { type: string },
+              description: 60 seconds for request windows; daily quota resets at midnight UTC,
+            },
+        }
+      content:
+        { application/json: { schema: { $ref: "#/components/schemas/Error" } } }

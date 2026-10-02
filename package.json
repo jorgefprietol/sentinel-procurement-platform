@@ -1,0 +1,17 @@
+{
+  "name": "sentinel-procurement-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "test:security": "node tests/security.mjs",
+    "check:contract": "node scripts/check-contract.mjs",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "12.1.0",
+    "prettier": "3.9.9"
+  }
+}
