@@ -32,6 +32,8 @@ El servicio Java aplica parches compatibles sobre las versiones administradas po
 
 El proveedor de referencia utiliza exclusivamente módulos nativos de Node. Su imagen elimina npm y Yarn, incluyendo sus dependencias, porque no instala paquetes durante la ejecución. El escáner verifica la imagen resultante completa.
 
+La interfaz usa NGINX sin privilegios 1.30.5, una versión corregida de la rama estable. Las actualizaciones del gateway se contrastan con los [avisos oficiales de NGINX](https://nginx.org/en/security_advisories.html) y se verifican mediante los mismos recorridos de navegador.
+
 ## Datos y recuperación
 
 Las bases viven en los volúmenes `dotnet-data` y `java-data`. `docker compose down` conserva los datos; `down -v` los elimina. Cambiar la contraseña de entorno no cambia las contraseñas dentro de volúmenes existentes; una rotación requiere una operación administrativa en PostgreSQL. Las migraciones de este proyecto inicializan bases nuevas; la evolución del esquema sobre bases existentes necesita una migración versionada adicional.
