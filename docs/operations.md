@@ -28,6 +28,8 @@ Las redes reservadas para este proyecto son `10.250.130.0/24` (gateway), `10.250
 
 Los reportes JSON de Trivy conservan vulnerabilidades corregibles y no corregibles. La política bloquea HIGH/CRITICAL corregibles; las demás se revisan en los artefactos. No se omiten hallazgos mediante una lista de excepciones no documentada.
 
+El servicio Java aplica parches compatibles sobre las versiones administradas por Spring Boot 4.0.8: Jackson 2.21.7 y 3.1.7 mediante sus BOM, y Tomcat 11.0.26. Estas versiones corrigen los hallazgos de dependencias detectados por el pipeline. Revisa esos overrides al actualizar Spring Boot, conservando versiones corregidas. Referencias: [BOM de Spring Boot](https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-dependencies/4.0.8/spring-boot-dependencies-4.0.8.pom), [BOM de Jackson](https://github.com/FasterXML/jackson-bom) y [avisos de seguridad de Tomcat](https://tomcat.apache.org/security-11.html).
+
 ## Datos y recuperación
 
 Las bases viven en los volúmenes `dotnet-data` y `java-data`. `docker compose down` conserva los datos; `down -v` los elimina. Cambiar la contraseña de entorno no cambia las contraseñas dentro de volúmenes existentes; una rotación requiere una operación administrativa en PostgreSQL. Las migraciones de este proyecto inicializan bases nuevas; la evolución del esquema sobre bases existentes necesita una migración versionada adicional.
