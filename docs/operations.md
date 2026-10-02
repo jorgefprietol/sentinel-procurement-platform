@@ -32,7 +32,7 @@ El servicio Java aplica parches compatibles sobre las versiones administradas po
 
 El proveedor de referencia utiliza exclusivamente módulos nativos de Node. Su imagen elimina npm y Yarn, incluyendo sus dependencias, porque no instala paquetes durante la ejecución. El escáner verifica la imagen resultante completa.
 
-La interfaz usa NGINX sin privilegios 1.30.5, una versión corregida de la rama estable. Las actualizaciones del gateway se contrastan con los [avisos oficiales de NGINX](https://nginx.org/en/security_advisories.html) y se verifican mediante los mismos recorridos de navegador.
+La interfaz usa NGINX sin privilegios 1.30.5, una versión corregida de la rama estable, con PCRE2 10.49-r0 o superior para corregir CVE-2026-103111. La instalación del parche se realiza durante el build y la ejecución vuelve al usuario 101. Las actualizaciones del gateway se contrastan con los [avisos oficiales de NGINX](https://nginx.org/en/security_advisories.html) y se verifican mediante los mismos recorridos de navegador.
 
 ## Datos y recuperación
 
