@@ -3,7 +3,7 @@ WORKDIR /src
 COPY services/java/pom.xml .
 COPY services/java/src src
 RUN --mount=type=cache,id=sentinel-maven,target=/root/.m2,sharing=locked mvn -B -Djava.net.preferIPv4Stack=true verify
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 RUN addgroup -S sentinel && adduser -S -G sentinel sentinel
 WORKDIR /app
 COPY --from=build /src/target/sentinel-api-1.0.0.jar app.jar
